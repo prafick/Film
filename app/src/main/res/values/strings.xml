@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Film</string>
+    <string name="title_watch">Просмотр</string>
+    <string name="title_news">Новости</string>
+    <string name="title_recommendation">Рекомендации</string>
+    <string name="btnText">ПОДОБРАТЬ ФИЛЬМ</string>
+    <string name="dialogYear">Выбор годов</string>
+    <string name="to">До</string>
+    <string name="from">От</string>
+    <string name="todo">TODO</string>
+    <string name="Error">Ошибка</string>
+    <string name="recTitleFilm">Название фильма</string>
+    <string name="title_string_rectitlefilm">Title @string/recTitleFilm</string>
+    <string name="rating">Rating</string>
+</resources>
