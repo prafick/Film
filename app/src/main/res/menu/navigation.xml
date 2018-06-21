@@ -7,9 +7,9 @@
         android:title="@string/title_watch" />
 
     <item
-        android:id="@+id/navigation_news"
-        android:icon="@drawable/ic_library_books_black_24dp"
-        android:title="@string/title_news" />
+        android:id="@+id/navigation_actor"
+        android:icon="@drawable/ic_assignment_ind_black_24dp"
+        android:title="@string/title_actor" />
 
     <item
         android:id="@+id/navigation_recommendation"

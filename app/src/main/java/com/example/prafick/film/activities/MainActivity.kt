@@ -9,7 +9,6 @@ import android.support.design.widget.BottomNavigationView
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -18,18 +17,19 @@ import android.widget.*
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
+import com.android.volley.Response.Listener
 import com.android.volley.toolbox.JsonObjectRequest
-import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
-import com.example.prafick.film.GetFilmListTask
 import com.example.prafick.film.R
-import com.example.prafick.film.R.id.*
+import com.example.prafick.film.adapters.ActorAdapter
 import com.example.prafick.film.adapters.FilmAdapter
 import com.example.prafick.film.adapters.FilterAdapter
+import com.example.prafick.film.model.Actor
 import com.example.prafick.film.model.Film
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.dialog_rating.view.*
 import org.json.JSONObject
 import java.util.*
 import kotlin.collections.ArrayList
@@ -38,6 +38,7 @@ const val api = "f3036f3c9d963520afac674b4b6c71de"
 var requestQueue: RequestQueue? = null
 
 class MainActivity : AppCompatActivity() {
+
     private var minRating = 0
     private val subtitles = arrayListOf("Все жанры", "За все время", "Любой рейтинг")
     private val defaultTitles = arrayListOf("Выберите жанр", "Выберите год", "Выберите рейтинг")
@@ -47,57 +48,59 @@ class MainActivity : AppCompatActivity() {
             "Фантастика", "Фэнтези")
     private val genreID = arrayOf(28, 37, 10752, 9648, 99, 18, 36, 35, 80, 10749, 10402, 16, 12,
             10751, 10770, 53, 27, 878, 14)
-    private val titlesNews = arrayListOf("")
-    private val pics = arrayListOf("")
+
 
     private val mOnNavigationItemSelectedListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
         when (item.itemId) {
             R.id.navigation_watch -> {
                 title = getString(R.string.title_watch)
-                nameFilm.visibility = View.VISIBLE
+                this.nameFilm.visibility = View.VISIBLE
                 posterView.visibility = View.VISIBLE
                 desc.visibility = View.VISIBLE
                 rating.visibility = View.VISIBLE
                 btn_rnd_film.visibility = View.VISIBLE
                 searchList.visibility = View.VISIBLE
-                newsList.visibility = View.INVISIBLE
                 filmList.visibility = View.INVISIBLE
-                recTitleFilm.visibility = View.INVISIBLE
-                //getURL()
+                searchView.visibility = View.INVISIBLE
                 showLayoutRndFilm()
+                hideKeyboard()
                 return@OnNavigationItemSelectedListener true
             }
-            R.id.navigation_news -> {
-                title = getString(R.string.title_news)
+            R.id.navigation_actor -> {
+                this.searchView.hint = "Актер"
+                title = getString(R.string.title_actor)
                 nameFilm.visibility = View.INVISIBLE
                 posterView.visibility = View.INVISIBLE
                 desc.visibility = View.INVISIBLE
                 rating.visibility = View.INVISIBLE
                 btn_rnd_film.visibility = View.INVISIBLE
                 searchList.visibility = View.INVISIBLE
-                newsList.visibility = View.VISIBLE
-                filmList.visibility = View.INVISIBLE
-                recTitleFilm.visibility = View.INVISIBLE
-                showLayoutNews()
+                filmList.visibility = View.VISIBLE
+                searchView.visibility = View.VISIBLE
+                searchView.text = null
+                setupRecycleView(arrayListOf())
+                hideKeyboard()
                 return@OnNavigationItemSelectedListener true
             }
             R.id.navigation_recommendation -> {
+                this.searchView.hint = "Название фильма"
+                searchView.text = null
+                setupRecycleView(arrayListOf())
                 title = getString(R.string.title_recommendation)
                 nameFilm.visibility = View.INVISIBLE
                 posterView.visibility = View.INVISIBLE
                 desc.visibility = View.INVISIBLE
                 rating.visibility = View.INVISIBLE
                 btn_rnd_film.visibility = View.INVISIBLE
-                newsList.visibility = View.INVISIBLE
                 searchList.visibility = View.INVISIBLE
                 filmList.visibility = View.VISIBLE
-                recTitleFilm.visibility = View.VISIBLE
+                searchView.visibility = View.VISIBLE
+                hideKeyboard()
                 return@OnNavigationItemSelectedListener true
             }
         }
         false
     }
-
 
     @SuppressLint("InflateParams")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,27 +108,78 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener)
         showLayoutRndFilm()
-
         desc.movementMethod = ScrollingMovementMethod()
         requestQueue = Volley.newRequestQueue(this)
-        //getFilm()
         Random()
         val btn = findViewById<Button>(R.id.btn_rnd_film)
         btn.setOnClickListener {
             getRandomFilm()
             desc.scrollTo(0, 0)
         }
-        recTitleFilm.setOnEditorActionListener(TextView.OnEditorActionListener { _, actionId, _ ->
+        searchView.setOnEditorActionListener(TextView.OnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val task = GetFilmListTask { searchFilm() }.execute()
-                val films = task.get()
-                setupRecycleView(films)
+                if (navigation.selectedItemId == R.id.navigation_recommendation) {
+                    searchFilm()
+                } else {
+                    searchActor()
+                }
                 hideKeyboard()
 
                 return@OnEditorActionListener true
             } else return@OnEditorActionListener false
         })
-        //getNews()
+    }
+
+    private fun searchActor() {
+        val actors = arrayListOf<Actor>()
+        val url = "https://api.themoviedb.org/3/search/person?api_key=$api&language=ru" +
+                "&include_adult=false&query=${searchView.text}&page=1"
+        var actor: JSONObject
+        var name: String
+        var id: Int
+        var photo: String
+        val queue = JsonObjectRequest(Request.Method.GET, url, null, Listener { response ->
+            val pages = response.getInt("total_pages")
+            if (pages == 1) {
+                val actorsArray = response.getJSONArray("results")
+                for (i in 0..actorsArray.length()) {
+                    try {
+                        actor = actorsArray.getJSONObject(i)
+                        name = actor.getString("name")
+                        id = actor.getInt("id")
+                        photo = "http://image.tmdb.org/t/p/w154/" +
+                                actor.getString("profile_path")
+                        actors.add(Actor(name, id, photo))
+                    } catch (e: Exception) {
+                        break
+                    }
+                }
+                setupActorsRecycleView(actors)
+            } else {
+                for (j in 1..pages) {
+                    val newURL = url.replace(Regex("page=.*"), "page=$j")
+                    val queue2 = JsonObjectRequest(Request.Method.GET, newURL, null, Listener { response2 ->
+                        val actorsArray = response2.getJSONArray("results")
+                        for (i in 0..actorsArray.length()) {
+                            try {
+                                actor = actorsArray.getJSONObject(i)
+                                name = actor.getString("name")
+                                id = actor.getInt("id")
+                                photo = "http://image.tmdb.org/t/p/w154/" +
+                                        actor.getString("profile_path")
+                                actors.add(Actor(name, id, photo))
+                            } catch (e: Exception) {
+                                break
+                            }
+
+                        }
+                        setupActorsRecycleView(actors)
+                    }, Response.ErrorListener { })
+                    requestQueue?.add(queue2)
+                }
+            }
+        }, Response.ErrorListener { })
+        requestQueue?.add(queue)
     }
 
     private fun hideKeyboard() {
@@ -133,24 +187,31 @@ class MainActivity : AppCompatActivity() {
         inputManager.hideSoftInputFromWindow(currentFocus.windowToken, InputMethodManager.SHOW_FORCED)
     }
 
-    private fun setupRecycleView(films: ArrayList<Film>) {
-        val adapter = FilmAdapter(this, films)
-        val recyclerView = findViewById<RecyclerView>(R.id.filmList)
+    private fun setupRecycleView(arrayList: ArrayList<Film>) {
+        val adapter = FilmAdapter(this, arrayList)
+        val recyclerView = this.filmList
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
     }
 
-    private fun searchFilm(): ArrayList<Film> {
+    private fun setupActorsRecycleView(arrayList: ArrayList<Actor>) {
+        val adapter = ActorAdapter(this, arrayList)
+        val recyclerView = this.filmList
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
+    }
+
+    private fun searchFilm() {
         val films = arrayListOf<Film>()
         val url = "https://api.themoviedb.org/3/search/movie?api_key=$api&language=ru&include_adult=false" +
-                "&query=${recTitleFilm.text}&page=1"
+                "&query=${searchView.text}&page=1"
         var titleFilm: String
         var film: JSONObject
         var posterFilm: String
         var description: String
         var id: Int
         var rating: Double
-        val queue = JsonObjectRequest(Request.Method.GET, url, null, Response.Listener { response ->
+        val queue = JsonObjectRequest(Request.Method.GET, url, null, Listener { response ->
             val pages = response.getInt("total_pages")
             if (pages == 1) {
                 val filmArray = response.getJSONArray("results")
@@ -167,12 +228,12 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         break
                     }
-
                 }
+                setupRecycleView(films)
             } else {
                 for (j in 1..pages) {
                     val newURL = url.replace(Regex("page=.*"), "page=$j")
-                    val queue2 = JsonObjectRequest(Request.Method.GET, newURL, null, Response.Listener { response2 ->
+                    val queue2 = JsonObjectRequest(Request.Method.GET, newURL, null, Listener { response2 ->
                         val filmArray = response2.getJSONArray("results")
                         for (i in 0..filmArray.length()) {
                             try {
@@ -189,18 +250,13 @@ class MainActivity : AppCompatActivity() {
                             }
 
                         }
+                        setupRecycleView(films)
                     }, Response.ErrorListener { })
                     requestQueue?.add(queue2)
                 }
             }
         }, Response.ErrorListener { })
         requestQueue?.add(queue)
-        return films
-    }
-
-    private fun showLayoutNews() {
-        //getNews()
-        //newsList.adapter = NewsAdapter(this, titlesNews, pics)
     }
 
     @SuppressLint("InflateParams")
@@ -256,7 +312,16 @@ class MainActivity : AppCompatActivity() {
                 2 -> {
                     val dialog = AlertDialog.Builder(this)
                     val mView = layoutInflater.inflate(R.layout.dialog_rating, null)
+                    val seekBar = mView.ratingBar
+                    seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                            mView.currentRating.text = progress.toString()
+                        }
 
+                        override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+                        override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                    })
                     dialog.setTitle("Минимальный рейтинг")
                             .setView(mView)
                             .setPositiveButton("OK", { _, _ ->
@@ -280,7 +345,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetTextI18n")
     private fun getRandomFilm() {
         val years = subtitles[1].replace(" ", "").split('-').toList()
         var url = if (years.size == 2)
@@ -294,7 +358,7 @@ class MainActivity : AppCompatActivity() {
             if (genre.indexOf(item) != -1)
                 url += "&with_genres=${genreID[genre.indexOf(item)]}"
         }
-        val queue = JsonObjectRequest(Request.Method.GET, url, null, Response.Listener { response ->
+        val queue = JsonObjectRequest(Request.Method.GET, url, null, Listener { response ->
             val maxPage = if (response.getInt("total_pages") <= 1000)
                 response.getInt("total_pages")
             else 1000
@@ -305,7 +369,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    @SuppressLint("NewApi", "SetTextI18n")
     private fun findFilm(url: String) {
         println(url)
         val films = arrayListOf<Film>()
@@ -315,10 +378,13 @@ class MainActivity : AppCompatActivity() {
         var description: String
         var id: Int
         var rating: Double
-
-        val queue2 = JsonObjectRequest(Request.Method.GET, url, null, Response.Listener { response2 ->
+        val option = RequestOptions().centerCrop()
+                .placeholder(R.drawable.loading_shape)
+                .error(R.drawable.ic_terrain_black_48dp)
+        val queue2 = JsonObjectRequest(Request.Method.GET, url, null, Listener { response2 ->
             val filmArray = response2.getJSONArray("results")
-            for (i in 0..filmArray.length()) {
+
+            for (i in 0..filmArray.length())
                 try {
                     film = filmArray.getJSONObject(i)
                     titleFilm = film.getString("title")
@@ -327,53 +393,32 @@ class MainActivity : AppCompatActivity() {
                     description = film.getString("overview")
                     id = film.getInt("id")
                     rating = film.getDouble("vote_average")
-                    films.add(Film(titleFilm, posterFilm, description, id, rating))
+                    if (rating > 0)
+                        films.add(Film(titleFilm, posterFilm, description, id, rating))
                 } catch (e: Exception) {
+                    this.nameFilm.text = "Ошибка"
                 }
+            try {
+                val rndFilm = (0..films.size).random()
+                this.nameFilm.text = films[rndFilm].title
+                this.desc.text = films[rndFilm].description
+                this.rating.text = "Рейтинг: " + films[rndFilm].rating.toString()
+                Glide.with(this).load(films[rndFilm].poster).apply(option).into(this.posterView)
+            } catch (e: Exception) {
+                this.nameFilm.text = "Ошибка. Попробуйте снова"
+                this.desc.text = ""
+                this.rating.text = ""
+                this.posterView.setImageResource(R.drawable.ic_terrain_black_48dp)
             }
-
         }, Response.ErrorListener {
-
+            this.nameFilm.text = "Ошибка. Попробуйте снова"
+            this.desc.text = ""
+            this.rating.text = ""
+            this.posterView.setImageResource(R.drawable.ic_terrain_black_48dp)
         })
         requestQueue?.add(queue2)
-        val option = RequestOptions().centerCrop()
-                .placeholder(R.drawable.loading_shape)
-                .error(R.drawable.ic_terrain_black_48dp)
-        val rndFilm = 0//0..films.size - 1).random()
-        this.nameFilm.text = films[rndFilm].title
-        this.desc.text = films[rndFilm].description
-        this.rating.text = films[rndFilm].rating.toString()
-        Glide.with(this).load(films[rndFilm].poster).apply(option).into(this.posterView)
     }
 
     private fun ClosedRange<Int>.random() =
             Random().nextInt(endInclusive - start) + start
-
-    private fun getNews() {
-        titlesNews.clear()
-        pics.clear()
-        val url = "https://www.kinonews.ru/news/"
-        println("test1")
-        val newsRequest = StringRequest(Request.Method.GET, url, Response.Listener { response ->
-            val utf8 = String(response.toByteArray(), charset("windows-1251"))
-                    .toByteArray(charset("UTF-8"))
-            val responseUTF8 = String(utf8)
-            val matches =
-                    Regex("(height=100 width=75 alt=')(.*)('></a>)").findAll(responseUTF8)
-            matches.forEach {
-                titlesNews.add(it.groups[2]!!.value
-                        .replace(Regex("&qout;"), "\""))
-            }
-            val posters = Regex("(<img src=\")(.*)(\" class)")
-                    .findAll(responseUTF8)
-            posters.forEach {
-                pics.add("https://www.kinonews.ru${it.groups[2]!!.value.replace("p.jpg", ".jpg")}")
-            }
-        }, Response.ErrorListener {
-        })
-        requestQueue?.add(newsRequest)
-
-
-    }
-
 }

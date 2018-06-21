@@ -17,8 +17,6 @@ import com.example.prafick.film.model.Film
 
 class FilmAdapter(private val mContext: Context, private val mData:List<Film>) : RecyclerView.Adapter<FilmAdapter.ViewHolder>(){
 
-
-
     private val option = RequestOptions().centerCrop()
             .placeholder(R.drawable.loading_shape)
             .error(R.drawable.ic_terrain_black_48dp)
@@ -27,13 +25,14 @@ class FilmAdapter(private val mContext: Context, private val mData:List<Film>) :
         val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.row_film_layout, parent, false)
         val viewHolder = ViewHolder(view)
-        viewHolder.viewContainer?.setOnClickListener(View.OnClickListener {
+        viewHolder.viewContainer?.setOnClickListener({
             val i = Intent(mContext, FilmActivity().javaClass)
             i.putExtra("film_title", mData[viewHolder.adapterPosition].title)
             i.putExtra("film_poster", mData[viewHolder.adapterPosition].poster)
             i.putExtra("film_description", mData[viewHolder.adapterPosition].description)
             i.putExtra("film_id", mData[viewHolder.adapterPosition].id)
             i.putExtra("film_rating", mData[viewHolder.adapterPosition].rating)
+            i.putExtra("flag", true)
                     mContext.startActivity(i)
         })
         return viewHolder
@@ -45,7 +44,6 @@ class FilmAdapter(private val mContext: Context, private val mData:List<Film>) :
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.mTitle?.text = mData[position].title
         holder.mRating?.text = mData[position].rating.toString()
-        //holder.mDescription?.text = mData[position].description
         Glide.with(mContext).load(mData[position].poster).apply(option).into(holder.mPic!!)
     }
 
@@ -53,7 +51,6 @@ class FilmAdapter(private val mContext: Context, private val mData:List<Film>) :
         val mTitle = itemView?.findViewById<TextView>(R.id.title_film)
         val mPic = itemView?.findViewById<ImageView>(R.id.poster_film)
         val mRating = itemView?.findViewById<TextView>(R.id.rate)
-        //val mDescription = itemView?.findViewById<TextView>(R.id.description)
         val viewContainer = itemView?.findViewById<LinearLayout>(R.id.container)
     }
 }

@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:scrollbars="horizontal"
     tools:context=".activities.FilmActivity">
-
     <android.support.design.widget.AppBarLayout
         android:id="@+id/appbar_layout_id"
         android:layout_width="match_parent"
         android:layout_height="300dp"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        >
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
         <android.support.design.widget.CollapsingToolbarLayout
             android:id="@+id/collapsing_toolbar"
@@ -23,7 +20,7 @@
             app:expandedTitleMarginEnd="64dp"
             app:expandedTitleMarginStart="12dp"
             app:layout_scrollFlags="exitUntilCollapsed|scroll"
-            app:title="Film title">
+            app:title="Вам понравится">
 
             <android.support.v7.widget.Toolbar
                 android:layout_width="match_parent"
@@ -73,9 +70,9 @@
                         android:id="@+id/description"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Description"
-                        android:maxLines="8"
                         android:ellipsize="end"
+                        android:maxLines="8"
+                        android:text="Description"
                         android:textColor="@android:color/white" />
                 </LinearLayout>
             </LinearLayout>
@@ -85,13 +82,15 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:padding="16dp">
+        android:padding="16dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
         <android.support.v7.widget.RecyclerView
+            android:id="@+id/recommendation_list"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/recommendation_list">
+            android:layout_height="match_parent">
 
         </android.support.v7.widget.RecyclerView>
+
     </LinearLayout>
 </android.support.design.widget.CoordinatorLayout>
